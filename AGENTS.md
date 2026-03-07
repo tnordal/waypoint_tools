@@ -1,14 +1,17 @@
 # AGENTS.md - Coding Agent Guidelines
 
-This document provides guidelines for AI coding agents working on the DJI Waypoint Manager project.
+This document provides guidelines for AI coding agents working on the waypoint-tools project.
 
 ## Project Overview
 
 - **Type**: Windows GUI desktop application
-- **Language**: Python 3.11+
+- **Language**: Python 3.12+
 - **Framework**: PyQt6
 - **Package Manager**: uv
 - **Target Platform**: Windows 10/11
+- **Development Environment**: Windows PowerShell
+
+**IMPORTANT**: This project is developed on Windows using PowerShell. Always use PowerShell commands (e.g., `dir`, `Remove-Item`, `Copy-Item`) instead of bash/Unix commands (e.g., `ls`, `rm`, `cp`). Git commands are acceptable as they work cross-platform.
 
 ---
 
@@ -21,8 +24,8 @@ uv sync                              # Install all dependencies
 
 ### Run Application
 ```powershell
-uv run python -m waypoint_manager    # Run from module
-uv run waypoint-manager              # Run via entry point
+uv run python -m waypoint_tools    # Run from module
+uv run waypoint-tools              # Run via entry point
 ```
 
 ### Linting & Formatting
@@ -48,7 +51,7 @@ uv run pytest --tb=short             # Shorter tracebacks
 
 ### Build EXE
 ```powershell
-uv run pyinstaller waypoint_manager.spec
+uv run pyinstaller waypoint_tools.spec
 ```
 
 ---
@@ -56,7 +59,7 @@ uv run pyinstaller waypoint_manager.spec
 ## Project Structure
 
 ```
-src/waypoint_manager/
+src/waypoint_tools/
 ├── __main__.py          # Entry point
 ├── app.py               # QApplication setup
 ├── ui/                  # PyQt6 widgets and dialogs
@@ -70,7 +73,7 @@ src/waypoint_manager/
 ## Code Style Guidelines
 
 ### Python Version
-- Use Python 3.11+ features
+- Use Python 3.12+ features
 - Use `|` for union types: `str | None` (not `Optional[str]`)
 - Use `list[str]` not `List[str]` (lowercase generics)
 
@@ -89,8 +92,8 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QMainWindow, QWidget
 
 # 3. Local imports
-from waypoint_manager.models.mission import Mission
-from waypoint_manager.utils.constants import APP_NAME
+from waypoint_tools.models.mission import Mission
+from waypoint_tools.utils.constants import APP_NAME
 ```
 
 ### Formatting
@@ -208,11 +211,11 @@ QMessageBox.warning(
 from pathlib import Path
 
 # Good
-config_path = Path.home() / ".waypoint_manager" / "config.json"
+config_path = Path.home() / ".waypoint_tools" / "config.json"
 kmz_files = list(folder.glob("*.kmz"))
 
 # Bad
-config_path = os.path.join(os.path.expanduser("~"), ".waypoint_manager", "config.json")
+config_path = os.path.join(os.path.expanduser("~"), ".waypoint_tools", "config.json")
 ```
 
 ### Safe File Writing
@@ -238,7 +241,7 @@ def save_database(path: Path, data: dict) -> None:
 ### Test Structure
 ```python
 import pytest
-from waypoint_manager.services.wpml_parser import parse_waypoints
+from waypoint_tools.services.wpml_parser import parse_waypoints
 
 def test_parse_waypoints_returns_correct_count():
     """Parser should extract all waypoints from WPML."""

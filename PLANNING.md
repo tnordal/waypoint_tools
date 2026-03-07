@@ -1,4 +1,4 @@
-# DJI Waypoint Manager - Project Plan
+# DJI Waypoint Tools - Project Plan
 
 ## Overview
 
@@ -25,7 +25,7 @@ Desktop app that:
 
 | Component | Technology |
 |-----------|------------|
-| Language | Python 3.11+ |
+| Language | Python 3.12+ |
 | GUI Framework | PyQt6 |
 | Package Manager | uv |
 | Distribution | PyInstaller (standalone EXE) |
@@ -68,7 +68,7 @@ Based on analysis of actual RC 2 waypoint folder:
 ```
 waypoint_tools/
 ├── src/
-│   └── waypoint_manager/
+│   └── waypoint_tools/
 │       ├── __init__.py
 │       ├── __main__.py              # Entry point
 │       ├── app.py                   # QApplication + single-instance
@@ -105,7 +105,7 @@ waypoint_tools/
 ├── pyproject.toml                   # uv project config
 ├── uv.lock                          # Locked dependencies
 ├── build.py                         # Build script
-├── waypoint_manager.spec            # PyInstaller spec
+├── waypoint_tools.spec            # PyInstaller spec
 ├── PLANNING.md                      # This file
 └── README.md                        # User documentation
 ```
@@ -240,10 +240,10 @@ class Mission:
 ### pyproject.toml
 ```toml
 [project]
-name = "waypoint-manager"
+name = "waypoint-tools"
 version = "1.0.0"
 description = "DJI Mini 5 Pro Waypoint File Manager"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "PyQt6>=6.6.0",
     "pywin32>=306",
@@ -251,10 +251,10 @@ dependencies = [
 ]
 
 [project.scripts]
-waypoint-manager = "waypoint_manager.__main__:main"
+waypoint-tools = "waypoint_tools.__main__:main"
 
 [project.gui-scripts]
-waypoint-manager-gui = "waypoint_manager.__main__:main"
+waypoint-tools-gui = "waypoint_tools.__main__:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -281,7 +281,7 @@ powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 uv sync
 
 # Run app
-uv run python -m waypoint_manager
+uv run python -m waypoint_tools
 
 # Run tests
 uv run pytest
@@ -289,15 +289,15 @@ uv run pytest
 
 ### Build EXE
 ```bash
-uv run pyinstaller waypoint_manager.spec
-# Output: dist/WaypointManager.exe
+uv run pyinstaller waypoint_tools.spec
+# Output: dist/WaypointTools.exe
 ```
 
 ### PyInstaller Spec Highlights
 ```python
 exe = EXE(
     ...
-    name='WaypointManager',
+    name='WaypointTools',
     icon='resources/icon.ico',
     console=False,      # GUI app, no console
     onefile=True,       # Single EXE file
@@ -311,7 +311,7 @@ exe = EXE(
 ### Main Window Layout
 ```
 +------------------------------------------------------------------------------+
-|  DJI Waypoint Manager                                           [_] [O] [X]  |
+|  DJI Waypoint Tools                                             [_] [O] [X]  |
 +------------------------------------------------------------------------------+
 |  [Controller] [Local Backup]          RC 2 Connected            [Settings]   |
 +------------------------------------------------------------------------------+
