@@ -77,10 +77,12 @@ class MainWindow(QMainWindow):
         
         # Mission list (left)
         self.mission_list = MissionListWidget()
+        self.mission_list.setMinimumWidth(250)  # Prevent from disappearing completely
         splitter.addWidget(self.mission_list)
         
         # Preview panel (right)
         self.preview_panel = PreviewPanel()
+        self.preview_panel.setMinimumWidth(300)  # Prevent from disappearing completely
         splitter.addWidget(self.preview_panel)
         
         # Set initial splitter sizes (40% list, 60% preview)

@@ -239,10 +239,23 @@ def copy_to_device(device: MTPDevice, source_folder: Path, mission_uuid: str) ->
         import win32com.client
 
         shell = win32com.client.Dispatch("Shell.Application")
-        source_shell = shell.NameSpace(str(source_mission))
+        
+        # Get the parent folder namespace and the mission folder item
+        parent_namespace = shell.NameSpace(str(source_folder))
+        
+        # Find the mission folder item
+        mission_folder_item = None
+        for item in parent_namespace.Items():
+            if item.Name == mission_uuid:
+                mission_folder_item = item
+                break
+        
+        if not mission_folder_item:
+            logger.error(f"Could not find mission folder item: {mission_uuid}")
+            return False
 
-        # Copy to device
-        waypoint_folder.CopyHere(source_shell, 16)  # 16 = no UI
+        # Copy the folder to device (16 = no UI, 4 = no confirmation)
+        waypoint_folder.CopyHere(mission_folder_item, 20)  # 16 + 4 = 20
 
         logger.info(f"Copied mission {mission_uuid} to device")
         return True

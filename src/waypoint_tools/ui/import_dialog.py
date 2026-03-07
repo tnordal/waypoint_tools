@@ -137,9 +137,9 @@ class ImportFromControllerDialog(QDialog):
             )
             return
         
-        # Create temporary import folder
-        temp_folder = DATA_DIR / "temp_import"
-        temp_folder.mkdir(parents=True, exist_ok=True)
+        # Create missions folder for permanent storage
+        missions_folder = DATA_DIR / "missions"
+        missions_folder.mkdir(parents=True, exist_ok=True)
         
         # Progress dialog
         progress = QProgressDialog(
@@ -162,17 +162,17 @@ class ImportFromControllerDialog(QDialog):
                 progress.setValue(i)
                 progress.setLabelText(f"Importing {mission_uuid[:16]}...")
                 
-                # Copy from device to temp folder
-                if copy_from_device(self.device, mission_uuid, temp_folder):
+                # Copy from device to missions folder
+                if copy_from_device(self.device, mission_uuid, missions_folder):
                     imported_count += 1
                 else:
                     failed.append(mission_uuid)
             
             progress.setValue(len(selected))
             
-            # Import from temp folder to database
+            # Import from missions folder to database
             if imported_count > 0:
-                new_count, updated_count = import_missions_from_folder(temp_folder)
+                new_count, updated_count = import_missions_from_folder(missions_folder)
                 
                 message = (
                     f"Successfully imported {imported_count} mission(s) from controller.\n"
@@ -198,12 +198,3 @@ class ImportFromControllerDialog(QDialog):
                 "Import Error",
                 f"An error occurred during import:\n{e}",
             )
-        
-        finally:
-            # Cleanup temp folder
-            import shutil
-            if temp_folder.exists():
-                try:
-                    shutil.rmtree(temp_folder)
-                except Exception as e:
-                    logger.warning(f"Failed to cleanup temp folder: {e}")

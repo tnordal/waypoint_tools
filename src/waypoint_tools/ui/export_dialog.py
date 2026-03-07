@@ -149,11 +149,6 @@ class ExportToControllerDialog(QDialog):
         if response != QMessageBox.StandardButton.Yes:
             return
         
-        # Get mission source folder (assume DATA_DIR for now)
-        # TODO: Track actual mission file locations
-        source_folder = DATA_DIR / "missions"
-        source_folder.mkdir(parents=True, exist_ok=True)
-        
         # Progress dialog
         progress = QProgressDialog(
             "Exporting missions...",
@@ -177,8 +172,19 @@ class ExportToControllerDialog(QDialog):
                     failed.append(mission_uuid)
                     continue
                 
+                # Check if mission has a file_path
+                if not mission.file_path:
+                    logger.warning(f"Mission {mission_uuid} has no file_path stored")
+                    failed.append(mission_uuid)
+                    continue
+                
                 progress.setValue(i)
                 progress.setLabelText(f"Exporting {mission.display_name}...")
+                
+                # Get the parent folder from the file_path
+                from pathlib import Path
+                mission_folder = Path(mission.file_path)
+                source_folder = mission_folder.parent
                 
                 # Copy to device
                 if copy_to_device(self.device, source_folder, mission_uuid):
