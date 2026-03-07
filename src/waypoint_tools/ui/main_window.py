@@ -183,12 +183,25 @@ class MainWindow(QMainWindow):
         logger.info(f"Importing missions from {folder}")
         
         try:
-            count = import_missions_from_folder(Path(folder))
+            new_count, updated_count = import_missions_from_folder(Path(folder))
+            
+            # Build message
+            if new_count == 0 and updated_count == 0:
+                message = "No missions found in the selected folder."
+            elif new_count > 0 and updated_count > 0:
+                message = (
+                    f"Imported {new_count} new mission(s) and "
+                    f"updated {updated_count} existing mission(s)."
+                )
+            elif new_count > 0:
+                message = f"Imported {new_count} new mission(s)."
+            else:
+                message = f"Updated {updated_count} existing mission(s)."
             
             QMessageBox.information(
                 self,
                 "Import Complete",
-                f"Imported {count} mission(s) from folder.",
+                message,
             )
             
             # Refresh UI

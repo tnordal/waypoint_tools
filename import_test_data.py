@@ -8,5 +8,5 @@ if __name__ == "__main__":
     test_data_folder = Path(__file__).parent / "test_data"
     print(f"Importing missions from: {test_data_folder}")
     
-    count = import_missions_from_folder(test_data_folder)
-    print(f"Imported {count} mission(s)")
+    new_count, updated_count = import_missions_from_folder(test_data_folder)
+    print(f"Imported {new_count} new mission(s), updated {updated_count} existing")

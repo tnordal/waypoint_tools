@@ -88,19 +88,17 @@ class SettingsDialog(QDialog):
     
     def _load_settings(self) -> None:
         """Load current settings from database."""
-        settings = self.db.get_settings()
-        
         # Load theme
-        theme = settings.get("theme", "light")
+        theme = self.db.get_theme()
         if theme == "dark":
             self.theme_combo.setCurrentText("Dark")
         else:
             self.theme_combo.setCurrentText("Light")
         
         # Load backup folder
-        backup_folder = settings.get("backup_folder", "")
+        backup_folder = self.db.get_backup_folder()
         if backup_folder:
-            self.backup_path_edit.setText(backup_folder)
+            self.backup_path_edit.setText(str(backup_folder))
         else:
             # Show default path
             default_path = Path.home() / "Documents" / "DJI Waypoint Tools" / "Backups"
@@ -132,21 +130,15 @@ class SettingsDialog(QDialog):
     
     def accept(self) -> None:
         """Save settings when dialog is accepted."""
-        settings = self.db.get_settings()
-        
         # Save theme
         theme = self.theme_combo.currentText().lower()
-        settings["theme"] = theme
+        self.db.set_theme(theme)
         
         # Save backup folder
         backup_folder = self.backup_path_edit.text()
         if backup_folder:
-            settings["backup_folder"] = backup_folder
-        else:
-            # Remove custom backup folder (use default)
-            settings.pop("backup_folder", None)
+            self.db.set_backup_folder(Path(backup_folder))
         
-        self.db.update_settings(settings)
         logger.info(f"Settings saved: theme={theme}, backup_folder={backup_folder}")
         
         super().accept()

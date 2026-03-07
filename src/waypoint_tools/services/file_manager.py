@@ -11,11 +11,62 @@ from waypoint_tools.services.wpml_parser import parse_kmz
 logger = logging.getLogger(__name__)
 
 
+def _is_mission_folder(folder: Path) -> bool:
+    """
+    Check if a folder is a mission folder (contains UUID.kmz file).
+    
+    Args:
+        folder: Path to check
+    
+    Returns:
+        True if folder is a mission folder
+    """
+    folder_name = folder.name
+    if len(folder_name) != 36 or folder_name.count("-") != 4:
+        return False
+    
+    kmz_file = folder / f"{folder_name}.kmz"
+    return kmz_file.exists()
+
+
+def _parse_mission_folder(mission_folder: Path) -> Mission | None:
+    """
+    Parse a single mission folder.
+    
+    Args:
+        mission_folder: Path to mission folder
+    
+    Returns:
+        Parsed mission or None if parsing failed
+    """
+    folder_name = mission_folder.name
+    kmz_file = mission_folder / f"{folder_name}.kmz"
+    
+    if not kmz_file.exists():
+        logger.warning(f"No KMZ file found for mission: {folder_name}")
+        return None
+    
+    # Parse the mission
+    mission = parse_kmz(kmz_file, folder_name)
+    if mission:
+        # Check for thumbnails
+        image_folder = mission_folder / "image"
+        if image_folder.exists():
+            thumbnails = list(image_folder.glob("WP_*.jpg"))
+            mission.thumbnail_paths = [str(t) for t in thumbnails]
+        
+        logger.info(f"Found mission: {folder_name}")
+    
+    return mission
+
+
 def scan_folder_for_missions(folder: Path) -> list[Mission]:
     """
     Scan a folder for DJI waypoint missions.
     
-    Looks for UUID-named folders containing .kmz files.
+    Handles two cases:
+    1. Folder contains UUID-named mission folders (normal case)
+    2. Folder itself is a mission folder (user selected mission folder directly)
     
     Args:
         folder: Path to scan
@@ -29,38 +80,30 @@ def scan_folder_for_missions(folder: Path) -> list[Mission]:
         logger.warning(f"Folder does not exist: {folder}")
         return missions
     
-    # Look for UUID folders
+    # Case 1: Check if the selected folder itself is a mission folder
+    if _is_mission_folder(folder):
+        logger.info(f"Selected folder is a mission folder: {folder.name}")
+        mission = _parse_mission_folder(folder)
+        if mission:
+            missions.append(mission)
+        return missions
+    
+    # Case 2: Look for mission folders inside the selected folder
     for mission_folder in folder.iterdir():
         if not mission_folder.is_dir():
             continue
         
-        # Check if folder name looks like a UUID
-        folder_name = mission_folder.name
-        if len(folder_name) != 36 or folder_name.count("-") != 4:
+        if not _is_mission_folder(mission_folder):
             continue
         
-        # Look for .kmz file with matching UUID
-        kmz_file = mission_folder / f"{folder_name}.kmz"
-        if not kmz_file.exists():
-            logger.warning(f"No KMZ file found for mission: {folder_name}")
-            continue
-        
-        # Parse the mission
-        mission = parse_kmz(kmz_file, folder_name)
+        mission = _parse_mission_folder(mission_folder)
         if mission:
-            # Check for thumbnails
-            image_folder = mission_folder / "image"
-            if image_folder.exists():
-                thumbnails = list(image_folder.glob("WP_*.jpg"))
-                mission.thumbnail_paths = [str(t) for t in thumbnails]
-            
             missions.append(mission)
-            logger.info(f"Found mission: {folder_name}")
     
     return missions
 
 
-def import_missions_from_folder(folder: Path) -> int:
+def import_missions_from_folder(folder: Path) -> tuple[int, int]:
     """
     Import missions from a folder into the database.
     
@@ -68,12 +111,14 @@ def import_missions_from_folder(folder: Path) -> int:
         folder: Path to folder containing mission folders
     
     Returns:
-        Number of missions imported
+        Tuple of (new_count, updated_count)
     """
     db = Database.get_instance()
     missions = scan_folder_for_missions(folder)
     
-    count = 0
+    new_count = 0
+    updated_count = 0
+    
     for mission in missions:
         # Check if mission already exists
         existing = db.get_mission(mission.uuid)
@@ -84,12 +129,18 @@ def import_missions_from_folder(folder: Path) -> int:
             mission.notes = existing.notes
             mission.tags = existing.tags
             mission.date_created = existing.date_created
-        
-        db.add_mission(mission)
-        count += 1
+            db.add_mission(mission)
+            updated_count += 1
+            logger.debug(f"Updated existing mission: {mission.uuid}")
+        else:
+            db.add_mission(mission)
+            new_count += 1
+            logger.debug(f"Imported new mission: {mission.uuid}")
     
-    logger.info(f"Imported {count} mission(s)")
-    return count
+    logger.info(
+        f"Imported {new_count} new mission(s), updated {updated_count} existing"
+    )
+    return new_count, updated_count
 
 
 def copy_mission_folder(
