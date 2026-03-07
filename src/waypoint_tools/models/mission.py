@@ -8,7 +8,7 @@ from typing import Literal
 @dataclass
 class Waypoint:
     """Individual waypoint data."""
-    
+
     index: int
     latitude: float
     longitude: float
@@ -22,10 +22,10 @@ class Waypoint:
 @dataclass
 class Mission:
     """Waypoint mission metadata and cached information."""
-    
+
     # Required
     uuid: str
-    
+
     # User metadata
     friendly_name: str | None = None
     location: str | None = None
@@ -33,7 +33,7 @@ class Mission:
     tags: list[str] = field(default_factory=list)
     date_created: datetime | None = None
     date_modified: datetime | None = None
-    
+
     # Parsed from WPML (cached)
     waypoint_count: int = 0
     total_distance_m: float = 0.0
@@ -44,30 +44,33 @@ class Mission:
     flight_speed: float = 0.0
     finish_action: str = ""
     drone_type: str = ""
-    
+
+    # File location
+    file_path: str | None = None  # Path to mission folder on disk
+
     # Runtime information
     source: Literal["controller", "local", "both"] = "local"
     thumbnail_paths: list[str] = field(default_factory=list)
     waypoints: list[Waypoint] = field(default_factory=list)
-    
+
     @property
     def display_name(self) -> str:
         """Get display name (friendly name or truncated UUID)."""
         if self.friendly_name:
             return self.friendly_name
         return f"{self.uuid[:8]}..."
-    
+
     @property
     def estimated_flight_time(self) -> float:
         """
         Estimate flight time in seconds.
-        
+
         Assumes constant speed along the path.
         """
         if self.flight_speed <= 0:
             return 0.0
         return self.total_distance_m / self.flight_speed
-    
+
     def to_dict(self) -> dict:
         """Convert mission to dictionary for JSON serialization."""
         return {
@@ -75,6 +78,7 @@ class Mission:
             "location": self.location,
             "notes": self.notes,
             "tags": self.tags,
+            "file_path": self.file_path,
             "date_created": (
                 self.date_created.isoformat() if self.date_created else None
             ),
@@ -93,12 +97,12 @@ class Mission:
                 "drone_type": self.drone_type,
             },
         }
-    
+
     @classmethod
     def from_dict(cls, uuid: str, data: dict) -> "Mission":
         """Create mission from dictionary loaded from JSON."""
         cached = data.get("cached_info", {})
-        
+
         # Parse dates
         date_created = None
         if data.get("date_created"):
@@ -106,20 +110,21 @@ class Mission:
                 date_created = datetime.fromisoformat(data["date_created"])
             except (ValueError, TypeError):
                 pass
-        
+
         date_modified = None
         if data.get("date_modified"):
             try:
                 date_modified = datetime.fromisoformat(data["date_modified"])
             except (ValueError, TypeError):
                 pass
-        
+
         return cls(
             uuid=uuid,
             friendly_name=data.get("friendly_name"),
             location=data.get("location"),
             notes=data.get("notes"),
             tags=data.get("tags", []),
+            file_path=data.get("file_path"),
             date_created=date_created,
             date_modified=date_modified,
             waypoint_count=cached.get("waypoint_count", 0),
