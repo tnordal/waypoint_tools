@@ -3,7 +3,7 @@
 import logging
 from pathlib import Path
 
-from PyQt6.QtCore import QSettings, Qt
+from PyQt6.QtCore import QSettings, Qt, QTimer
 from PyQt6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -19,6 +19,9 @@ from PyQt6.QtWidgets import (
 
 from waypoint_tools.models.database import Database
 from waypoint_tools.services.file_manager import import_missions_from_folder
+from waypoint_tools.services.mtp_device import detect_rc2_controller, MTPDevice
+from waypoint_tools.ui.export_dialog import ExportToControllerDialog
+from waypoint_tools.ui.import_dialog import ImportFromControllerDialog
 from waypoint_tools.ui.mission_list import MissionListWidget
 from waypoint_tools.ui.preview_panel import PreviewPanel
 from waypoint_tools.ui.settings_dialog import SettingsDialog
@@ -42,11 +45,13 @@ class MainWindow(QMainWindow):
         
         self.db = Database.get_instance()
         self.settings = QSettings(ORGANIZATION_NAME, APP_NAME)
+        self.rc2_device: MTPDevice | None = None
         
         self._setup_ui()
         self._apply_theme()
         self._restore_window_state()
         self._connect_signals()
+        self._start_device_monitor()
         
         logger.info("Main window initialized")
     
@@ -112,13 +117,15 @@ class MainWindow(QMainWindow):
         import_folder_btn.clicked.connect(self._on_import_folder)
         layout.addWidget(import_folder_btn)
         
-        import_btn = QPushButton("Import")
-        import_btn.setEnabled(False)
-        layout.addWidget(import_btn)
+        self.import_btn = QPushButton("Import from RC 2")
+        self.import_btn.setEnabled(False)
+        self.import_btn.clicked.connect(self._on_import_from_controller)
+        layout.addWidget(self.import_btn)
         
-        export_btn = QPushButton("Export")
-        export_btn.setEnabled(False)
-        layout.addWidget(export_btn)
+        self.export_btn = QPushButton("Export to RC 2")
+        self.export_btn.setEnabled(False)
+        self.export_btn.clicked.connect(self._on_export_to_controller)
+        layout.addWidget(self.export_btn)
         
         settings_btn = QPushButton("Settings")
         settings_btn.clicked.connect(self._on_settings)
@@ -240,8 +247,87 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(stylesheet)
         logger.debug(f"Applied theme: {theme}")
     
+    def _start_device_monitor(self) -> None:
+        """Start monitoring for RC 2 controller connection."""
+        self.device_timer = QTimer(self)
+        self.device_timer.timeout.connect(self._check_device_status)
+        self.device_timer.start(3000)  # Check every 3 seconds
+        
+        # Do initial check
+        self._check_device_status()
+    
+    def _check_device_status(self) -> None:
+        """Check if RC 2 controller is connected."""
+        device = detect_rc2_controller()
+        
+        if device:
+            if not self.rc2_device:
+                # Device just connected
+                logger.info(f"RC 2 controller connected: {device.name}")
+                self.rc2_device = device
+                self._update_controller_status(True, device.name)
+        else:
+            if self.rc2_device:
+                # Device just disconnected
+                logger.info("RC 2 controller disconnected")
+                self.rc2_device = None
+                self._update_controller_status(False)
+    
+    def _update_controller_status(
+        self,
+        connected: bool,
+        device_name: str = "",
+    ) -> None:
+        """Update controller status UI."""
+        if connected:
+            self.controller_status.setText(f"RC 2: Connected ({device_name})")
+            self.controller_status.setStyleSheet("color: green;")
+            self.import_btn.setEnabled(True)
+            self.export_btn.setEnabled(True)
+        else:
+            self.controller_status.setText("RC 2: Not Connected")
+            self.controller_status.setStyleSheet("")
+            self.import_btn.setEnabled(False)
+            self.export_btn.setEnabled(False)
+    
+    def _on_import_from_controller(self) -> None:
+        """Handle import from RC 2 controller button click."""
+        if not self.rc2_device:
+            QMessageBox.warning(
+                self,
+                "No Controller",
+                "RC 2 controller not connected.",
+            )
+            return
+        
+        logger.info("Import from controller requested")
+        
+        dialog = ImportFromControllerDialog(self.rc2_device, self)
+        if dialog.exec():
+            # Missions imported - refresh UI
+            self._on_refresh()
+    
+    def _on_export_to_controller(self) -> None:
+        """Handle export to RC 2 controller button click."""
+        if not self.rc2_device:
+            QMessageBox.warning(
+                self,
+                "No Controller",
+                "RC 2 controller not connected.",
+            )
+            return
+        
+        logger.info("Export to controller requested")
+        
+        dialog = ExportToControllerDialog(self.rc2_device, self)
+        dialog.exec()
+    
     def closeEvent(self, event) -> None:
         """Handle window close event."""
+        # Stop device monitoring
+        if hasattr(self, "device_timer"):
+            self.device_timer.stop()
+        
         self._save_window_state()
         logger.info("Main window closed")
         super().closeEvent(event)
