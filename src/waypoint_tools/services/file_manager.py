@@ -3,11 +3,13 @@
 import json
 import logging
 import shutil
+import uuid
 from pathlib import Path
 
 from waypoint_tools.models.database import Database
 from waypoint_tools.models.mission import Mission
 from waypoint_tools.services.wpml_parser import parse_kmz
+from waypoint_tools.utils.constants import DATA_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -242,3 +244,68 @@ def create_backup(
     except Exception as e:
         logger.error(f"Failed to backup mission {mission.uuid}: {e}")
         return False
+
+
+def import_kmz_file(kmz_path: Path) -> Mission | None:
+    """
+    Import a single KMZ file (e.g., from waypointmap.com).
+
+    Creates a mission folder with generated UUID, copies the KMZ file,
+    and imports it into the database.
+
+    Args:
+        kmz_path: Path to the KMZ file to import
+
+    Returns:
+        Imported Mission object, or None if import failed
+    """
+    if not kmz_path.exists() or not kmz_path.is_file():
+        logger.error(f"KMZ file not found: {kmz_path}")
+        return None
+
+    if kmz_path.suffix.lower() != ".kmz":
+        logger.error(f"Not a KMZ file: {kmz_path}")
+        return None
+
+    mission_folder = None
+    try:
+        # Generate a new UUID for this mission
+        mission_uuid = str(uuid.uuid4()).upper()
+        logger.info(f"Importing KMZ file as mission {mission_uuid}")
+
+        # Create mission folder in data directory
+        missions_folder = DATA_DIR / "missions"
+        missions_folder.mkdir(parents=True, exist_ok=True)
+
+        mission_folder = missions_folder / mission_uuid
+        mission_folder.mkdir(parents=True, exist_ok=True)
+
+        # Copy KMZ file with UUID name
+        dest_kmz = mission_folder / f"{mission_uuid}.kmz"
+        shutil.copy2(kmz_path, dest_kmz)
+        logger.info(f"Copied KMZ to {dest_kmz}")
+
+        # Parse the mission
+        mission = parse_kmz(dest_kmz, mission_uuid)
+        if not mission:
+            logger.error(f"Failed to parse KMZ file: {kmz_path}")
+            # Clean up the folder we created
+            shutil.rmtree(mission_folder, ignore_errors=True)
+            return None
+
+        # Set file path
+        mission.file_path = str(mission_folder)
+
+        # Add to database
+        db = Database.get_instance()
+        db.add_mission(mission)
+        logger.info(f"Successfully imported mission {mission_uuid}")
+
+        return mission
+
+    except Exception as e:
+        logger.error(f"Failed to import KMZ file {kmz_path}: {e}")
+        # Clean up on error
+        if mission_folder and mission_folder.exists():
+            shutil.rmtree(mission_folder, ignore_errors=True)
+        return None

@@ -21,6 +21,12 @@ NAMESPACES = {
     "wpml": "http://www.uav.com/wpmz/1.0.2",
 }
 
+# Alternative namespace used by waypointmap.com
+NAMESPACES_DJI = {
+    "kml": "http://www.opengis.net/kml/2.2",
+    "wpml": "http://www.dji.com/wpmz/1.0.2",
+}
+
 
 def parse_kmz(kmz_path: Path, uuid: str) -> Mission | None:
     """
@@ -76,19 +82,27 @@ def parse_wpml(wpml_data: bytes | str, uuid: str) -> Mission | None:
         else:
             root = etree.fromstring(wpml_data)
         
+        # Detect which namespace is used
+        namespaces = NAMESPACES
+        if root.nsmap.get("wpml") == "http://www.dji.com/wpmz/1.0.2":
+            namespaces = NAMESPACES_DJI
+            logger.debug(f"Using DJI namespace for {uuid}")
+        else:
+            logger.debug(f"Using UAV namespace for {uuid}")
+        
         # Extract mission configuration
-        mission_config = root.find(".//wpml:missionConfig", namespaces=NAMESPACES)
+        mission_config = root.find(".//wpml:missionConfig", namespaces=namespaces)
         if mission_config is None:
             logger.warning(f"No mission config found in WPML for {uuid}")
             mission_config = etree.Element("missionConfig")
         
         finish_action = _get_text(
-            mission_config, ".//wpml:finishAction", NAMESPACES, "goHome"
+            mission_config, ".//wpml:finishAction", namespaces, "goHome"
         )
         drone_enum = _get_text(
             mission_config,
             ".//wpml:droneInfo/wpml:droneEnumValue",
-            NAMESPACES,
+            namespaces,
             "68",
         )
         
@@ -97,7 +111,7 @@ def parse_wpml(wpml_data: bytes | str, uuid: str) -> Mission | None:
         drone_type_display = DRONE_TYPES.get(drone_enum, f"Unknown ({drone_enum})")
         
         # Extract flight speed (Folder is in kml namespace)
-        folder = root.find(".//kml:Folder", namespaces=NAMESPACES)
+        folder = root.find(".//kml:Folder", namespaces=namespaces)
         if folder is None:
             # Try without namespace
             folder = root.find(".//Folder")
@@ -106,18 +120,18 @@ def parse_wpml(wpml_data: bytes | str, uuid: str) -> Mission | None:
             return None
         
         flight_speed = float(
-            _get_text(folder, ".//wpml:autoFlightSpeed", NAMESPACES, "2.5")
+            _get_text(folder, ".//wpml:autoFlightSpeed", namespaces, "2.5")
         )
         
         # Parse waypoints (Placemark is also in kml namespace)
         waypoints = []
-        placemarks = folder.findall(".//kml:Placemark", namespaces=NAMESPACES)
+        placemarks = folder.findall(".//kml:Placemark", namespaces=namespaces)
         if not placemarks:
             # Try without namespace
             placemarks = folder.findall(".//Placemark")
         
         for placemark in placemarks:
-            waypoint = _parse_waypoint(placemark)
+            waypoint = _parse_waypoint(placemark, namespaces)
             if waypoint:
                 waypoints.append(waypoint)
         
@@ -159,20 +173,20 @@ def parse_wpml(wpml_data: bytes | str, uuid: str) -> Mission | None:
         return None
 
 
-def _parse_waypoint(placemark: etree.Element) -> Waypoint | None:
+def _parse_waypoint(placemark: etree.Element, namespaces: dict) -> Waypoint | None:
     """Parse a single waypoint from a Placemark element."""
     try:
         # Get index
-        index_str = _get_text(placemark, ".//wpml:index", NAMESPACES)
+        index_str = _get_text(placemark, ".//wpml:index", namespaces)
         if not index_str:
             return None
         index = int(index_str)
         
         # Get coordinates (format: "longitude,latitude") - Point is in kml namespace
-        coords_str = _get_text(placemark, ".//kml:Point/kml:coordinates", NAMESPACES)
+        coords_str = _get_text(placemark, ".//kml:Point/kml:coordinates", namespaces)
         if not coords_str:
             # Try without namespace
-            coords_str = _get_text(placemark, ".//Point/coordinates", NAMESPACES)
+            coords_str = _get_text(placemark, ".//Point/coordinates", namespaces)
         if not coords_str:
             logger.warning(f"No coordinates for waypoint {index}")
             return None
@@ -187,19 +201,19 @@ def _parse_waypoint(placemark: etree.Element) -> Waypoint | None:
         
         # Get altitude (executeHeight)
         altitude = float(
-            _get_text(placemark, ".//wpml:executeHeight", NAMESPACES, "0")
+            _get_text(placemark, ".//wpml:executeHeight", namespaces, "0")
         )
         
         # Get speed
         speed = float(
-            _get_text(placemark, ".//wpml:waypointSpeed", NAMESPACES, "2.5")
+            _get_text(placemark, ".//wpml:waypointSpeed", namespaces, "2.5")
         )
         
         # Get heading (optional)
         heading_str = _get_text(
             placemark,
             ".//wpml:waypointHeadingParam/wpml:waypointHeadingAngle",
-            NAMESPACES,
+            namespaces,
         )
         heading = float(heading_str) if heading_str else None
         
@@ -207,7 +221,7 @@ def _parse_waypoint(placemark: etree.Element) -> Waypoint | None:
         gimbal_pitch_str = _get_text(
             placemark,
             ".//wpml:actionActuatorFuncParam/wpml:gimbalPitchRotateAngle",
-            NAMESPACES,
+            namespaces,
         )
         gimbal_pitch = float(gimbal_pitch_str) if gimbal_pitch_str else None
         
