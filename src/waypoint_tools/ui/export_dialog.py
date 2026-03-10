@@ -1,6 +1,7 @@
 """Export dialog for exporting missions to RC 2 controller."""
 
 import logging
+from pathlib import Path
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
@@ -182,7 +183,6 @@ class ExportToControllerDialog(QDialog):
                 progress.setLabelText(f"Exporting {mission.display_name}...")
                 
                 # Get the parent folder from the file_path
-                from pathlib import Path
                 mission_folder = Path(mission.file_path)
                 source_folder = mission_folder.parent
                 

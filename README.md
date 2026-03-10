@@ -32,8 +32,8 @@ A Windows desktop application for managing DJI Mini 5 Pro waypoint mission files
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
 # Clone the repository
-git clone https://github.com/yourusername/waypoint-tools.git
-cd waypoint-tools
+git clone https://github.com/tnordal/waypoint_tools.git
+cd waypoint_tools
 
 # Install dependencies
 uv sync
@@ -80,8 +80,8 @@ Click "Settings" to configure:
 
 ## File Locations
 
-- **Database**: `~/.waypoint_tools/data/missions.json`
-- **Default Backups**: `~/Documents/DJI Waypoint Tools/Backups`
+- **Database**: `%USERPROFILE%\.waypoint_tools\data\missions.json`
+- **Default Backups**: `%USERPROFILE%\Documents\DJI Waypoint Tools\Backups`
 
 ## Mission Folder Structure
 

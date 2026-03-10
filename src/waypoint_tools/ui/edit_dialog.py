@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFormLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -117,8 +118,6 @@ class EditMissionDialog(QDialog):
     
     def _add_tag(self) -> None:
         """Add a new tag to the list."""
-        from PyQt6.QtWidgets import QInputDialog
-        
         # Get existing tags
         all_tags = self.db.get_all_tags()
         

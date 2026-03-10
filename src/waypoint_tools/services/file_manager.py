@@ -1,5 +1,6 @@
 """File manager for mission import/export operations."""
 
+import json
 import logging
 import shutil
 from pathlib import Path
@@ -231,7 +232,6 @@ def create_backup(
 
         # Save metadata
         metadata_file = dest_mission / "metadata.json"
-        import json
 
         with open(metadata_file, "w", encoding="utf-8") as f:
             json.dump(mission.to_dict(), f, indent=2, ensure_ascii=False)

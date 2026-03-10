@@ -1,7 +1,6 @@
 """Single instance application support using Windows mutex."""
 
 import logging
-import sys
 
 import win32api
 import win32event

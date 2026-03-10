@@ -3,6 +3,8 @@
 import logging
 from pathlib import Path
 
+import win32com.client
+
 logger = logging.getLogger(__name__)
 
 # Expected path on RC 2 controller
@@ -113,8 +115,6 @@ def detect_rc2_controller() -> MTPDevice | None:
         MTPDevice object if found, None otherwise
     """
     try:
-        import win32com.client
-
         shell = win32com.client.Dispatch("Shell.Application")
 
         # Get "This PC" namespace (17 = Computer)
@@ -194,8 +194,6 @@ def copy_from_device(device: MTPDevice, mission_uuid: str, dest_folder: Path) ->
         dest_mission.mkdir(parents=True, exist_ok=True)
 
         # Copy files using Shell
-        import win32com.client
-
         shell = win32com.client.Dispatch("Shell.Application")
         dest_shell = shell.NameSpace(str(dest_mission))
 
@@ -236,8 +234,6 @@ def copy_to_device(device: MTPDevice, source_folder: Path, mission_uuid: str) ->
             return False
 
         # Copy folder to device using Shell
-        import win32com.client
-
         shell = win32com.client.Dispatch("Shell.Application")
         
         # Get the parent folder namespace and the mission folder item
