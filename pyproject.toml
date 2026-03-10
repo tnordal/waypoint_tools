@@ -1,7 +1,28 @@
 [project]
 name = "waypoint-tools"
-version = "0.1.0"
-description = "Add your description here"
+version = "1.0.0"
+description = "DJI Mini 5 Pro Waypoint File Manager"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "PyQt6>=6.6.0",
+    "pywin32>=306",
+    "lxml>=5.1.0",
+]
+
+[project.scripts]
+waypoint-tools = "waypoint_tools.__main__:main"
+
+[project.gui-scripts]
+waypoint-tools-gui = "waypoint_tools.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.3.0",
+    "pytest>=8.0.0",
+    "ruff>=0.2.0",
+]
