@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
 )
 
 from waypoint_tools.models.database import Database
-from waypoint_tools.services.file_manager import import_missions_from_folder
+from waypoint_tools.services.file_manager import import_missions_from_folder, import_kmz_file
 from waypoint_tools.services.mtp_device import detect_rc2_controller, MTPDevice
 from waypoint_tools.ui.export_dialog import ExportToControllerDialog
 from waypoint_tools.ui.import_dialog import ImportFromControllerDialog
@@ -118,6 +118,10 @@ class MainWindow(QMainWindow):
         import_folder_btn = QPushButton("Import Folder")
         import_folder_btn.clicked.connect(self._on_import_folder)
         layout.addWidget(import_folder_btn)
+        
+        import_kmz_btn = QPushButton("Import KMZ File")
+        import_kmz_btn.clicked.connect(self._on_import_kmz_file)
+        layout.addWidget(import_kmz_btn)
         
         self.import_btn = QPushButton("Import from RC 2")
         self.import_btn.setEnabled(False)
@@ -222,6 +226,53 @@ class MainWindow(QMainWindow):
                 self,
                 "Import Failed",
                 f"Failed to import missions:\n{e}",
+            )
+    
+    def _on_import_kmz_file(self) -> None:
+        """Handle Import KMZ File button click."""
+        logger.info("Import KMZ file requested")
+        
+        # Open file dialog
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select KMZ File to Import",
+            str(Path.home()),
+            "KMZ Files (*.kmz);;All Files (*.*)",
+        )
+        
+        if not file_path:
+            logger.debug("KMZ file selection cancelled")
+            return
+        
+        try:
+            kmz_path = Path(file_path)
+            logger.info(f"Importing KMZ file: {kmz_path}")
+            
+            # Import the KMZ file
+            mission = import_kmz_file(kmz_path)
+            
+            if mission:
+                QMessageBox.information(
+                    self,
+                    "Import Successful",
+                    f"Successfully imported mission:\n{mission.display_name}",
+                )
+                
+                # Refresh UI
+                self._on_refresh()
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Import Failed",
+                    "Failed to import the KMZ file.\nPlease check the file format.",
+                )
+        
+        except Exception as e:
+            logger.error(f"Failed to import KMZ file: {e}")
+            QMessageBox.critical(
+                self,
+                "Import Failed",
+                f"Failed to import KMZ file:\n{e}",
             )
     
     def _on_settings(self) -> None:
