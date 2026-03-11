@@ -288,10 +288,7 @@ def import_kmz_file(kmz_path: Path) -> Mission | None:
         # Parse the mission
         mission = parse_kmz(dest_kmz, mission_uuid)
         if not mission:
-            logger.error(f"Failed to parse KMZ file: {kmz_path}")
-            # Clean up the folder we created
-            shutil.rmtree(mission_folder, ignore_errors=True)
-            return None
+            raise ValueError(f"Failed to parse KMZ file: {dest_kmz}")
 
         # Set file path
         mission.file_path = str(mission_folder)
