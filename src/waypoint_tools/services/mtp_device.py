@@ -235,17 +235,17 @@ def copy_to_device(device: MTPDevice, source_folder: Path, mission_uuid: str) ->
 
         # Copy folder to device using Shell
         shell = win32com.client.Dispatch("Shell.Application")
-        
+
         # Get the parent folder namespace and the mission folder item
         parent_namespace = shell.NameSpace(str(source_folder))
-        
+
         # Find the mission folder item
         mission_folder_item = None
         for item in parent_namespace.Items():
             if item.Name == mission_uuid:
                 mission_folder_item = item
                 break
-        
+
         if not mission_folder_item:
             logger.error(f"Could not find mission folder item: {mission_uuid}")
             return False
@@ -266,17 +266,17 @@ def replace_mission_on_device(
 ) -> bool:
     """
     Replace a mission on the controller.
-    
+
     This function:
     1. Finds the target UUID folder on the controller
     2. Deletes all files in that folder
     3. Copies the source KMZ file, renamed to match target UUID
-    
+
     Args:
         device: MTP device (RC 2 controller)
         source_kmz_path: Path to local KMZ file to copy
         target_controller_uuid: UUID of controller folder to replace
-    
+
     Returns:
         True if successful, False otherwise
     """
@@ -285,11 +285,11 @@ def replace_mission_on_device(
         if not waypoint_folder:
             logger.error("Waypoint folder not accessible")
             return False
-        
+
         if not source_kmz_path.exists():
             logger.error(f"Source KMZ file not found: {source_kmz_path}")
             return False
-        
+
         # Find the target mission folder on controller
         target_folder = None
         items = waypoint_folder.Items()
@@ -297,65 +297,90 @@ def replace_mission_on_device(
             if item.Name == target_controller_uuid and item.IsFolder:
                 target_folder = item.GetFolder
                 break
-        
+
         if not target_folder:
             logger.error(
                 f"Target mission folder not found on controller: {target_controller_uuid}"
             )
             return False
-        
+
         # Delete all files in the target folder
         logger.info(f"Deleting files in controller folder: {target_controller_uuid}")
         try:
             folder_items = target_folder.Items()
-            for item in folder_items:
+            # Convert to list to avoid modifying collection during iteration
+            items_to_delete = [item for item in folder_items]
+            for item in items_to_delete:
                 try:
-                    # Use parent folder to delete the item
-                    target_folder.Parent.ParseName(item.Name).InvokeVerb("delete")
+                    # Invoke delete verb directly on the item
+                    item.InvokeVerb("delete")
+                    logger.debug(f"Deleted {item.Name}")
                 except Exception as e:
                     logger.warning(f"Failed to delete item {item.Name}: {e}")
                     # Continue even if some files fail to delete
         except Exception as e:
             logger.error(f"Failed to delete folder contents: {e}")
             return False
-        
+
         # Copy the KMZ file with renamed filename
         logger.info(
             f"Copying {source_kmz_path.name} to controller as {target_controller_uuid}.kmz"
         )
-        
+
         # Create a temporary copy with the target UUID name
         import shutil
         import tempfile
-        
+
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             renamed_kmz = temp_path / f"{target_controller_uuid}.kmz"
             shutil.copy2(source_kmz_path, renamed_kmz)
-            
-            # Copy renamed file to device
+            logger.debug(f"Created temp renamed file: {renamed_kmz}")
+
+            # Verify the file exists
+            if not renamed_kmz.exists():
+                logger.error(f"Renamed KMZ file not created: {renamed_kmz}")
+                return False
+
+            # Copy renamed file to device using Shell
             shell = win32com.client.Dispatch("Shell.Application")
             temp_namespace = shell.NameSpace(str(temp_path))
-            
-            # Find the renamed KMZ file
+
+            if not temp_namespace:
+                logger.error(f"Failed to get namespace for temp folder: {temp_path}")
+                return False
+
+            # Find the renamed KMZ file in temp folder
             kmz_item = None
-            for item in temp_namespace.Items():
+            temp_items = temp_namespace.Items()
+            logger.debug(f"Temp folder has {temp_items.Count} items")
+
+            for item in temp_items:
+                logger.debug(f"Found temp item: {item.Name}")
                 if item.Name == f"{target_controller_uuid}.kmz":
                     kmz_item = item
                     break
-            
+
             if not kmz_item:
-                logger.error("Failed to find renamed KMZ file in temp folder")
+                logger.error(
+                    f"Failed to find renamed KMZ file in temp folder. Looking for: {target_controller_uuid}.kmz"
+                )
                 return False
-            
+
             # Copy to controller folder (16 = no UI, 4 = no confirmation)
+            logger.debug(f"Copying {kmz_item.Name} to controller folder")
             target_folder.CopyHere(kmz_item, 20)  # 16 + 4 = 20
-        
+
+            # Give Windows time to complete the copy operation
+            import time
+
+            time.sleep(1)
+
         logger.info(
             f"Successfully replaced mission {target_controller_uuid} on controller"
         )
         return True
-        
+
     except Exception as e:
         logger.error(f"Failed to replace mission on device: {e}")
         return False
