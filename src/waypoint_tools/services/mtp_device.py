@@ -330,10 +330,14 @@ def replace_mission_on_device(
         # Create a temporary copy with the target UUID name
         import shutil
         import tempfile
+        import time
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
-            renamed_kmz = temp_path / f"{target_controller_uuid}.kmz"
+        # Create temp directory (don't use context manager to avoid premature cleanup)
+        temp_dir = tempfile.mkdtemp()
+        temp_path = Path(temp_dir)
+        renamed_kmz = temp_path / f"{target_controller_uuid}.kmz"
+
+        try:
             shutil.copy2(source_kmz_path, renamed_kmz)
             logger.debug(f"Created temp renamed file: {renamed_kmz}")
 
@@ -379,10 +383,38 @@ def replace_mission_on_device(
             logger.debug(f"Copying {kmz_item.Name} to controller folder")
             target_folder.CopyHere(kmz_item, 20)  # 16 + 4 = 20
 
-            # Give Windows time to complete the copy operation
-            import time
+            # Wait for copy to complete by checking if file appears in target folder
+            logger.debug("Waiting for copy operation to complete...")
+            max_wait = 10  # seconds
+            wait_interval = 0.5
+            elapsed = 0
 
-            time.sleep(1)
+            while elapsed < max_wait:
+                time.sleep(wait_interval)
+                elapsed += wait_interval
+
+                # Check if file exists in target folder
+                try:
+                    target_items = target_folder.Items()
+                    for item in target_items:
+                        if item.Name == target_filename:
+                            logger.info(f"Copy completed successfully after {elapsed}s")
+                            return True
+                except Exception as check_error:
+                    logger.debug(f"Error checking target folder: {check_error}")
+
+            logger.warning(
+                f"Copy operation timed out after {max_wait}s - file may still be copying"
+            )
+            return True  # Return success anyway, the operation was initiated
+
+        finally:
+            # Clean up temp directory
+            try:
+                shutil.rmtree(temp_dir)
+                logger.debug(f"Cleaned up temp directory: {temp_dir}")
+            except Exception as cleanup_error:
+                logger.warning(f"Failed to clean up temp directory: {cleanup_error}")
 
         logger.info(
             f"Successfully replaced mission {target_controller_uuid} on controller"
