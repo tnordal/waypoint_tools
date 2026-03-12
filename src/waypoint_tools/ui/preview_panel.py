@@ -122,12 +122,18 @@ class PreviewPanel(QWidget):
         """Clear the preview panel."""
         self.current_mission = None
 
-        # Clear all widgets except empty label
+        # Clear all widgets
         while self.content_layout.count() > 0:
             item = self.content_layout.takeAt(0)
             if item.widget():
-                item.widget().deleteLater()
+                widget = item.widget()
+                widget.setParent(None)
+                widget.deleteLater()
+            elif item.spacerItem():
+                # Remove spacer items as well
+                pass
 
+        # Add empty state
         self.empty_label = QLabel("Select a mission to view details")
         self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.empty_label.setProperty("class", "secondary")
@@ -140,7 +146,12 @@ class PreviewPanel(QWidget):
         while self.content_layout.count() > 0:
             item = self.content_layout.takeAt(0)
             if item.widget():
-                item.widget().deleteLater()
+                widget = item.widget()
+                widget.setParent(None)
+                widget.deleteLater()
+            elif item.spacerItem():
+                # Remove spacer items as well
+                pass
 
         # Header with Edit button
         header_layout = QHBoxLayout()
