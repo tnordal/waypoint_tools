@@ -228,7 +228,7 @@ def _parse_waypoint(placemark: etree.Element, namespaces: dict) -> Waypoint | No
         # Get action types
         actions = []
         action_funcs = placemark.findall(
-            ".//wpml:actionActuatorFunc", namespaces=NAMESPACES
+            ".//wpml:actionActuatorFunc", namespaces=namespaces
         )
         for func in action_funcs:
             if func.text:

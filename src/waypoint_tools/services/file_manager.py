@@ -288,7 +288,7 @@ def import_kmz_file(kmz_path: Path) -> Mission | None:
         # Parse the mission
         mission = parse_kmz(dest_kmz, mission_uuid)
         if not mission:
-            raise ValueError(f"Failed to parse KMZ file: {dest_kmz}")
+            raise ValueError("KMZ file parsing failed after copy")
 
         # Set file path
         mission.file_path = str(mission_folder)
