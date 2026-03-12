@@ -130,7 +130,7 @@ class MissionListWidget(QWidget):
         """Populate the list widget with missions."""
         # Explicitly emit signal to clear preview panel
         self.mission_selected.emit("")
-        
+
         # Clear selection and list
         self.mission_list.clearSelection()
         self.mission_list.setCurrentItem(None)
@@ -142,6 +142,10 @@ class MissionListWidget(QWidget):
             # Format display text
             name = mission.display_name
             location = f" | {mission.location}" if mission.location else ""
+
+            # Export indicator
+            export_status = " | ✓ Exported" if mission.controller_uuid else ""
+
             waypoints = f" | {mission.waypoint_count} pts"
 
             # Format date
@@ -157,7 +161,9 @@ class MissionListWidget(QWidget):
                 tag_count = len(mission.tags)
                 tags_str = f"\n  [{', '.join(mission.tags)}] ({tag_count} tag{'s' if tag_count > 1 else ''})"
 
-            item_text = f"{name}{location}{waypoints}{date_str}{tags_str}"
+            item_text = (
+                f"{name}{location}{export_status}{waypoints}{date_str}{tags_str}"
+            )
             item.setText(item_text)
             item.setData(Qt.ItemDataRole.UserRole, mission.uuid)
 

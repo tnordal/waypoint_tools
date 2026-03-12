@@ -33,6 +33,9 @@ class Mission:
     tags: list[str] = field(default_factory=list)
     date_created: datetime | None = None
     date_modified: datetime | None = None
+    
+    # Controller tracking
+    controller_uuid: str | None = None  # UUID on controller if exported
 
     # Parsed from WPML (cached)
     waypoint_count: int = 0
@@ -79,6 +82,7 @@ class Mission:
             "notes": self.notes,
             "tags": self.tags,
             "file_path": self.file_path,
+            "controller_uuid": self.controller_uuid,
             "date_created": (
                 self.date_created.isoformat() if self.date_created else None
             ),
@@ -125,6 +129,7 @@ class Mission:
             notes=data.get("notes"),
             tags=data.get("tags", []),
             file_path=data.get("file_path"),
+            controller_uuid=data.get("controller_uuid"),
             date_created=date_created,
             date_modified=date_modified,
             waypoint_count=cached.get("waypoint_count", 0),

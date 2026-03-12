@@ -109,12 +109,15 @@ def scan_folder_for_missions(folder: Path) -> list[Mission]:
     return missions
 
 
-def import_missions_from_folder(folder: Path) -> tuple[int, int]:
+def import_missions_from_folder(
+    folder: Path, from_controller: bool = False
+) -> tuple[int, int]:
     """
     Import missions from a folder into the database.
 
     Args:
         folder: Path to folder containing mission folders
+        from_controller: True if importing from RC 2 controller (sets controller_uuid)
 
     Returns:
         Tuple of (new_count, updated_count)
@@ -126,20 +129,48 @@ def import_missions_from_folder(folder: Path) -> tuple[int, int]:
     updated_count = 0
 
     for mission in missions:
-        # Check if mission already exists
-        existing = db.get_mission(mission.uuid)
+        # When importing from controller, check if this controller UUID
+        # was previously exported from a local mission
+        existing = None
+        controller_uuid = None
+
+        if from_controller:
+            controller_uuid = mission.uuid  # Controller folder UUID
+            existing = db.get_mission_by_controller_uuid(controller_uuid)
+            if existing:
+                logger.info(
+                    f"Found local mission {existing.uuid} exported to controller UUID {controller_uuid}"
+                )
+
+        # Fallback: check by regular UUID match
+        if not existing:
+            existing = db.get_mission(mission.uuid)
+
         if existing:
-            # Update cached info and file path but preserve user metadata
-            mission.friendly_name = existing.friendly_name
-            mission.location = existing.location
-            mission.notes = existing.notes
-            mission.tags = existing.tags
-            mission.date_created = existing.date_created
-            # Keep the new file_path (mission may have been moved)
-            db.add_mission(mission)
+            # Update the EXISTING mission with refreshed data from controller
+            # Preserve the existing mission's UUID and user metadata
+            updated_mission = Mission(
+                uuid=existing.uuid,  # Keep original local UUID
+                file_path=mission.file_path,  # Update with new file path
+                waypoints=mission.waypoints,  # Refresh waypoint data
+                thumbnail_paths=mission.thumbnail_paths,  # Refresh thumbnails
+                friendly_name=existing.friendly_name,  # Preserve user metadata
+                location=existing.location,
+                notes=existing.notes,
+                tags=existing.tags,
+                date_created=existing.date_created,
+                controller_uuid=controller_uuid or existing.controller_uuid,
+            )
+            db.add_mission(updated_mission)
             updated_count += 1
-            logger.debug(f"Updated existing mission: {mission.uuid}")
+            logger.debug(f"Updated existing mission: {existing.uuid}")
         else:
+            # New mission - set controller_uuid if importing from controller
+            if from_controller:
+                mission.controller_uuid = controller_uuid
+                logger.debug(
+                    f"Setting controller_uuid={controller_uuid} for new mission"
+                )
             db.add_mission(mission)
             new_count += 1
             logger.debug(f"Imported new mission: {mission.uuid}")

@@ -146,6 +146,24 @@ class Database:
         
         return Mission.from_dict(uuid, missions_data[uuid])
     
+    def get_mission_by_controller_uuid(self, controller_uuid: str) -> Mission | None:
+        """
+        Get mission by controller UUID.
+        
+        Finds the local mission that was exported to this controller UUID.
+        
+        Args:
+            controller_uuid: UUID of mission on controller
+            
+        Returns:
+            Mission object if found, None otherwise
+        """
+        missions_data = self.data.get("missions", {})
+        for uuid, data in missions_data.items():
+            if data.get("controller_uuid") == controller_uuid:
+                return Mission.from_dict(uuid, data)
+        return None
+    
     def get_all_missions(self) -> list[Mission]:
         """Get all missions."""
         missions_data = self.data.get("missions", {})
