@@ -350,22 +350,30 @@ def replace_mission_on_device(
                 logger.error(f"Failed to get namespace for temp folder: {temp_path}")
                 return False
 
-            # Find the renamed KMZ file in temp folder
-            kmz_item = None
-            temp_items = temp_namespace.Items()
-            logger.debug(f"Temp folder has {temp_items.Count} items")
+            # Use ParseName to get the file directly instead of enumerating
+            target_filename = f"{target_controller_uuid}.kmz"
+            logger.debug(f"Looking for file: {target_filename} in {temp_path}")
 
-            for item in temp_items:
-                logger.debug(f"Found temp item: {item.Name}")
-                if item.Name == f"{target_controller_uuid}.kmz":
-                    kmz_item = item
-                    break
+            kmz_item = temp_namespace.ParseName(target_filename)
 
             if not kmz_item:
                 logger.error(
-                    f"Failed to find renamed KMZ file in temp folder. Looking for: {target_controller_uuid}.kmz"
+                    f"Failed to find renamed KMZ file using ParseName: {target_filename}"
                 )
-                return False
+                # Try enumerating as fallback
+                try:
+                    temp_items = temp_namespace.Items()
+                    logger.debug(f"Temp folder has {temp_items.Count} items")
+                    for item in temp_items:
+                        logger.debug(f"Found temp item: {item.Name}")
+                        if item.Name == target_filename:
+                            kmz_item = item
+                            break
+                except Exception as enum_error:
+                    logger.error(f"Enumeration also failed: {enum_error}")
+
+                if not kmz_item:
+                    return False
 
             # Copy to controller folder (16 = no UI, 4 = no confirmation)
             logger.debug(f"Copying {kmz_item.Name} to controller folder")
