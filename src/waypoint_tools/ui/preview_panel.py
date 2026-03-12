@@ -3,7 +3,7 @@
 import logging
 from pathlib import Path
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QCoreApplication
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
     QFormLayout,
@@ -132,6 +132,9 @@ class PreviewPanel(QWidget):
             elif item.spacerItem():
                 # Remove spacer items as well
                 pass
+        
+        # Process pending delete events to ensure widgets are actually removed
+        QCoreApplication.processEvents()
 
         # Add empty state
         self.empty_label = QLabel("Select a mission to view details")
@@ -152,6 +155,9 @@ class PreviewPanel(QWidget):
             elif item.spacerItem():
                 # Remove spacer items as well
                 pass
+        
+        # Process pending delete events to ensure widgets are actually removed
+        QCoreApplication.processEvents()
 
         # Header with Edit button
         header_layout = QHBoxLayout()
