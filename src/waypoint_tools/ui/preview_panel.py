@@ -36,24 +36,25 @@ class PreviewPanel(QWidget):
         super().__init__(parent)
         self.db = Database.get_instance()
         self.current_mission: Mission | None = None
+        self.scroll_area: QScrollArea | None = None
         self._setup_ui()
 
     def _setup_ui(self) -> None:
         """Initialize UI components."""
         # Make the panel scrollable
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         content = QWidget()
         self.content_layout = QVBoxLayout(content)
         self.content_layout.setContentsMargins(10, 10, 10, 10)
 
-        scroll.setWidget(content)
+        self.scroll_area.setWidget(content)
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.addWidget(scroll)
+        main_layout.addWidget(self.scroll_area)
 
         # Empty state
         self.empty_label = QLabel("Select a mission to view details")
@@ -122,19 +123,10 @@ class PreviewPanel(QWidget):
         """Clear the preview panel."""
         self.current_mission = None
 
-        # Clear all widgets
-        while self.content_layout.count() > 0:
-            item = self.content_layout.takeAt(0)
-            if item.widget():
-                widget = item.widget()
-                widget.setParent(None)
-                widget.deleteLater()
-            elif item.spacerItem():
-                # Remove spacer items as well
-                pass
-        
-        # Process pending delete events to ensure widgets are actually removed
-        QCoreApplication.processEvents()
+        # Create a completely new content widget to ensure clean state
+        content = QWidget()
+        self.content_layout = QVBoxLayout(content)
+        self.content_layout.setContentsMargins(10, 10, 10, 10)
 
         # Add empty state
         self.empty_label = QLabel("Select a mission to view details")
@@ -142,6 +134,13 @@ class PreviewPanel(QWidget):
         self.empty_label.setProperty("class", "secondary")
         self.content_layout.addWidget(self.empty_label)
         self.content_layout.addStretch()
+
+        # Replace the scroll area's widget
+        if self.scroll_area:
+            old_widget = self.scroll_area.takeWidget()
+            if old_widget:
+                old_widget.deleteLater()
+            self.scroll_area.setWidget(content)
 
     def _display_mission(self, mission: Mission) -> None:
         """Display mission details."""
