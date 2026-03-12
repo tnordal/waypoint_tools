@@ -128,7 +128,10 @@ class MissionListWidget(QWidget):
 
     def _populate_list(self, missions: list[Mission]) -> None:
         """Populate the list widget with missions."""
-        # Clear selection first to ensure preview panel is cleared
+        # Explicitly emit signal to clear preview panel
+        self.mission_selected.emit("")
+        
+        # Clear selection and list
         self.mission_list.clearSelection()
         self.mission_list.setCurrentItem(None)
         self.mission_list.clear()
